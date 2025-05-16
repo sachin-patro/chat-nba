@@ -1,10 +1,11 @@
-import openai
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 load_dotenv()  # Loads from .env
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def parse_query_with_gpt(user_input: str) -> dict:
     prompt = f"""
@@ -34,13 +35,11 @@ User: {user_input}
 Output:
 """
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        temperature=0,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    response = client.chat.completions.create(model="gpt-4o",
+    temperature=0,
+    messages=[{"role": "user", "content": prompt}])
 
-    output_text = response["choices"][0]["message"]["content"]
+    output_text = response.choices[0].message.content
 
     try:
         json_start = output_text.find("{")

@@ -1,8 +1,10 @@
 from utils import print_banner
+from openai_helper import parse_query_with_gpt
 
 def main():
     print_banner()
-    print("Welcome to Chat NBA! Ask me anything about NBA stats.\n(Type 'exit' to quit)\n")
+    print("Welcome to Chat NBA! Ask me anything about NBA stats.")
+    print("(Type 'exit' to quit)\n")
 
     while True:
         user_input = input("> ")
@@ -11,7 +13,15 @@ def main():
             print("Goodbye!")
             break
 
-        print(f"You asked: {user_input} (feature coming soon!)\n")
+        print("\nThinking...\n")
+
+        # Get structured intent from GPT
+        result = parse_query_with_gpt(user_input)
+
+        # Show result
+        print("Parsed intent:")
+        print(result)
+        print()
 
 if __name__ == "__main__":
     main()
