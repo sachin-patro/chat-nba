@@ -1,10 +1,9 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 
 load_dotenv()  # Loads from .env
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def parse_query_with_gpt(user_input: str) -> dict:
@@ -21,6 +20,14 @@ Output:
   "season": "2023-2024"
 }}
 ---
+User: who led the league in assists this season?
+Output:
+{{
+  "action": "get_stat_leader",
+  "stat": "assists",
+  "season": "2024-2025"
+}}
+---
 User: show me LeBron James' points per game over the last 5 years
 Output:
 {{
@@ -35,9 +42,11 @@ User: {user_input}
 Output:
 """
 
-    response = client.chat.completions.create(model="gpt-4o",
-    temperature=0,
-    messages=[{"role": "user", "content": prompt}])
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        temperature=0,
+        messages=[{"role": "user", "content": prompt}]
+    )
 
     output_text = response.choices[0].message.content
 
