@@ -37,6 +37,15 @@ Output:
   "range": "last 5 years"
 }}
 ---
+User: compare LeBron James and Kevin Durant in points, assists, and rebounds this season
+Output:
+{{
+  "action": "compare_players",
+  "players": ["LeBron James", "Kevin Durant"],
+  "stats": ["points", "assists", "rebounds"],
+  "season": "2024-2025"
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:
