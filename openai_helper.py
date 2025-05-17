@@ -58,6 +58,15 @@ Output:
   "per_game": true
 }}
 ---
+User: Who leads the Warriors in scoring this season?
+Output:
+{{
+  "action": "get_team_leader",
+  "team_name": "Warriors",
+  "stat_name": "scoring", 
+  "season": "2024-2025"
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:

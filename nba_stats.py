@@ -1,5 +1,5 @@
 from nba_api.stats.endpoints import leaguedashplayerstats, playercareerstats
-from nba_api.stats.static import players
+from nba_api.stats.static import players, teams
 import pandas as pd
 import re # For parsing range
 from datetime import datetime # For determining current year
@@ -67,6 +67,46 @@ def normalize_season(season: str) -> str:
         "this season": "2024-25"
     }
     return mapping.get(season.lower(), season)
+
+def get_team_id(team_name_query: str) -> int | None:
+    # Attempt to find by full name (returns a list)
+    found_team_list = teams.find_teams_by_full_name(team_name_query)
+    if found_team_list:
+        return found_team_list[0]['id']
+
+    # Attempt to find by nickname (returns a list)
+    found_team_list = teams.find_teams_by_nickname(team_name_query)
+    if found_team_list:
+        return found_team_list[0]['id']
+
+    # Attempt to find by abbreviation (returns a dict or None)
+    team_by_abbr = teams.find_team_by_abbreviation(team_name_query) # Corrected method name
+    if team_by_abbr:
+        return team_by_abbr['id'] # Directly access id from dict
+
+    # Attempt to find by city (returns a list)
+    found_team_list = teams.find_teams_by_city(team_name_query)
+    if found_team_list:
+        return found_team_list[0]['id']
+    
+    # Simple custom mapping for common names GPT might produce
+    custom_mapping = { 
+        "warriors": "Golden State Warriors",
+        "lakers": "Los Angeles Lakers",
+        "celtics": "Boston Celtics",
+        "bucks": "Milwaukee Bucks",
+        "sixers": "Philadelphia 76ers", 
+        # Add more as needed
+    }
+    normalized_query = team_name_query.lower()
+    if normalized_query in custom_mapping:
+        # If custom mapping matches, search by the mapped full name
+        mapped_full_name = custom_mapping[normalized_query]
+        found_team_list_custom = teams.find_teams_by_full_name(mapped_full_name)
+        if found_team_list_custom:
+            return found_team_list_custom[0]['id']
+
+    return None
 
 def get_player_id(player_name: str):
     player_find = players.find_players_by_full_name(player_name)
@@ -147,6 +187,67 @@ def get_player_stats_over_seasons(player_name: str, stat_name: str, season_range
     # Add player name column for clarity, though it's for a single player
     result_df.insert(0, 'PLAYER_NAME', player_name)
 
+    return result_df
+
+def get_team_leader(team_name: str, stat_name: str, season: str):
+    normalized_season = normalize_season(season)
+    team_id = get_team_id(team_name)
+
+    if not team_id:
+        return f"❌ Team '{team_name}' not found."
+
+    # GPT might send "scoring" for "points"
+    if stat_name.lower() == "scoring":
+        stat_name = "points"
+    
+    stat_column = stat_name_to_column(stat_name)
+    
+    # Determine if per_game is implied by the stat name
+    per_game_implied = "per game" in stat_name.lower() or "_per_game" in stat_name.lower()
+    per_mode_request = "PerGame" if per_game_implied else "Totals"
+
+    try:
+        team_player_stats_df = leaguedashplayerstats.LeagueDashPlayerStats(
+            season=normalized_season,
+            team_id_nullable=team_id,
+            per_mode_detailed=per_mode_request 
+        ).get_data_frames()[0]
+    except Exception as e:
+        return f"❌ Error fetching team stats: {e}"
+
+    if team_player_stats_df.empty:
+        return f"❌ No player stats found for {team_name} in season {normalized_season} (Mode: {per_mode_request})."
+
+    if stat_column not in team_player_stats_df.columns:
+        # If original stat_name was 'scoring' and mapped to 'PTS', and 'PTS' is not found,
+        # it's a genuine missing column.
+        return f"❌ Stat '{stat_name}' (mapped to '{stat_column}') not found for {team_name} in season {normalized_season} (Mode: {per_mode_request}). Available columns: {team_player_stats_df.columns.tolist()}"
+
+    # Apply similar FG_PCT, FT_PCT, FG3_PCT filters as in get_top_players_by_stat if applicable
+    if stat_column == "FG3_PCT":
+        team_player_stats_df = team_player_stats_df[team_player_stats_df["FG3A"] > 10] # Lower threshold for single team leader
+    elif stat_column == "FT_PCT":
+        team_player_stats_df = team_player_stats_df[team_player_stats_df["FTA"] > 10]
+    elif stat_column == "FG_PCT":
+        team_player_stats_df = team_player_stats_df[team_player_stats_df["FGA"] > 20]
+        
+    if team_player_stats_df.empty:
+         return f"❌ No players found for {team_name} in season {normalized_season} after applying minimum attempt filters for {stat_column}."
+
+    # Sort to find the leader
+    # For percentage stats, ensure the player has a reasonable number of attempts (already partly handled)
+    leader_df = team_player_stats_df.sort_values(by=stat_column, ascending=False).head(1)
+
+    if leader_df.empty:
+        return f"❌ Could not determine a leader for {stat_name} for {team_name} in {normalized_season}."
+
+    leader_name = leader_df.iloc[0]['PLAYER_NAME']
+    leader_stat_value = leader_df.iloc[0][stat_column]
+    
+    # Create a small DataFrame for consistent output
+    result_data = {'PLAYER_NAME': [leader_name], stat_column: [leader_stat_value]}
+    result_df = pd.DataFrame(result_data)
+    result_df.rename(columns={stat_column: stat_name.upper()}, inplace=True)
     return result_df
 
 def compare_players(player_names: list, stat_names: list, season: str, per_game: bool = False):
