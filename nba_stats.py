@@ -2,26 +2,28 @@ from nba_api.stats.endpoints import leaguedashplayerstats
 import pandas as pd
 
 def get_top_players_by_stat(stat_name: str, season: str, limit: int = 5):
-    # Normalize season for NBA API format
     season = normalize_season(season)
 
-    # Fetch data from NBA stats API
     stats = leaguedashplayerstats.LeagueDashPlayerStats(season=season).get_data_frames()[0]
-
-    # Normalize stat name for lookup (expand later with aliases)
     stat_column = stat_name_to_column(stat_name)
 
     if stat_column not in stats.columns:
         return f"❌ Stat '{stat_name}' not found in data."
 
-    # Sort and filter top players
-    top_players = stats.sort_values(by=stat_column, ascending=False).head(limit)
+    # Add filters to exclude players with too few attempts
+    if stat_column == "FG3_PCT":
+        stats = stats[stats["FG3A"] > 100]  # e.g. min 100 3PA
+    elif stat_column == "FT_PCT":
+        stats = stats[stats["FTA"] > 100]   # e.g. min 100 FTA
+    elif stat_column == "FG_PCT":
+        stats = stats[stats["FGA"] > 300]   # min 300 FG attempts
 
-    # Select just name + stat column
+    # Sort and limit
+    top_players = stats.sort_values(by=stat_column, ascending=False).head(limit)
     return top_players[['PLAYER_NAME', stat_column]]
 
+
 def stat_name_to_column(stat_name: str) -> str:
-    # Expand this as you go; basic alias mapping
     mapping = {
         "points": "PTS",
         "assists": "AST",
@@ -29,10 +31,16 @@ def stat_name_to_column(stat_name: str) -> str:
         "steals": "STL",
         "blocks": "BLK",
         "3-point percentage": "FG3_PCT",
+        "3pt%": "FG3_PCT",
+        "3pt": "FG3_PCT",
+        "fg3%": "FG3_PCT",
+        "fg%": "FG_PCT",
         "field goal %": "FG_PCT",
-        "free throw %": "FT_PCT"
+        "free throw %": "FT_PCT",
+        "ft%": "FT_PCT"
     }
     return mapping.get(stat_name.lower(), stat_name)
+
 
 def normalize_season(season: str) -> str:
     mapping = {
