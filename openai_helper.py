@@ -1,4 +1,5 @@
 from openai import OpenAI
+import json
 import os
 from dotenv import load_dotenv
 
@@ -46,6 +47,17 @@ Output:
   "season": "2024-2025"
 }}
 ---
+---
+User: compare Jayson Tatum and Jimmy Butler in points per game and rebounds this season
+Output:
+{{
+  "action": "compare_players",
+  "players": ["Jayson Tatum", "Jimmy Butler"],
+  "stats": ["points per game", "rebounds"],
+  "season": "2024-2025",
+  "per_game": true
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:
@@ -63,7 +75,7 @@ Output:
         json_start = output_text.find("{")
         json_end = output_text.rfind("}") + 1
         json_str = output_text[json_start:json_end]
-        return eval(json_str)
+        return json.loads(json_str)
     except Exception as e:
         print("⚠️ Error parsing GPT output:", e)
         return {"error": "could not parse"}

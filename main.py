@@ -1,6 +1,6 @@
 from utils import print_banner
 from openai_helper import parse_query_with_gpt
-from nba_stats import get_top_players_by_stat
+from nba_stats import get_top_players_by_stat, compare_players
 import pandas as pd
 from tabulate import tabulate
 
@@ -27,6 +27,19 @@ def main():
                 stat_name=result.get("stat", ""),
                 season=result.get("season", ""),
                 limit=result.get("limit", 5)
+            )
+            if isinstance(table, pd.DataFrame):
+                print(tabulate(table, headers='keys', tablefmt='grid', showindex=False))
+            else:
+                print(table)
+            print()
+
+        elif result.get("action") == "compare_players":
+            table = compare_players(
+                player_names=result.get("players", []),
+                stat_names=result.get("stats", []),
+                season=result.get("season", ""),
+                per_game=result.get("per_game", False)
             )
             if isinstance(table, pd.DataFrame):
                 print(tabulate(table, headers='keys', tablefmt='grid', showindex=False))
