@@ -26,7 +26,22 @@ def main():
             table = get_top_players_by_stat(
                 stat_name=result.get("stat", ""),
                 season=result.get("season", ""),
-                limit=result.get("limit", 5)
+                limit=result.get("limit", 5),
+                season_type=result.get("season_type", "Regular Season")
+            )
+            if isinstance(table, pd.DataFrame):
+                print(tabulate(table, headers='keys', tablefmt='grid', showindex=False))
+            else:
+                print(table)
+            print()
+
+        elif result.get("action") == "get_stat_leader":
+            # Alias for get_top_players with limit=1
+            table = get_top_players_by_stat(
+                stat_name=result.get("stat", ""),
+                season=result.get("season", ""),
+                limit=1,
+                season_type=result.get("season_type", "Regular Season")
             )
             if isinstance(table, pd.DataFrame):
                 print(tabulate(table, headers='keys', tablefmt='grid', showindex=False))

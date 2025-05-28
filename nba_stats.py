@@ -4,10 +4,13 @@ import pandas as pd
 import re # For parsing range
 from datetime import datetime # For determining current year
 
-def get_top_players_by_stat(stat_name: str, season: str, limit: int = 5):
+def get_top_players_by_stat(stat_name: str, season: str, limit: int = 5, season_type: str = "Regular Season"):
     season = normalize_season(season)
 
-    stats = leaguedashplayerstats.LeagueDashPlayerStats(season=season).get_data_frames()[0]
+    stats = leaguedashplayerstats.LeagueDashPlayerStats(
+        season=season,
+        season_type_all_star=season_type
+    ).get_data_frames()[0]
     stat_column = stat_name_to_column(stat_name)
 
     if stat_column not in stats.columns:
@@ -41,6 +44,11 @@ def stat_name_to_column(stat_name: str) -> str:
         "field goal %": "FG_PCT",
         "free throw %": "FT_PCT",
         "ft%": "FT_PCT",
+        "free throw attempts": "FTA",
+        "free throws made": "FTM",
+        "free throws": "FTM",
+        "fta": "FTA",
+        "ftm": "FTM",
         "points per game": "PTS",
         "assists per game": "AST",
         "rebounds per game": "REB",

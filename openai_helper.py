@@ -67,6 +67,16 @@ Output:
   "season": "2024-2025"
 }}
 ---
+User: who has the most free throw attempts in the nba playoffs right now?
+Output:
+{{
+  "action": "get_top_players",
+  "stat": "free throw attempts",
+  "season": "2024-2025",
+  "season_type": "Playoffs",
+  "limit": 5
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:
