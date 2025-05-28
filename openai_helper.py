@@ -77,6 +77,14 @@ Output:
   "limit": 5
 }}
 ---
+User: What's the Lakers' record this season?
+Output:
+{{
+  "action": "get_team_record",
+  "team_name": "Lakers",
+  "season": "2024-2025"
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:

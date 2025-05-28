@@ -1,4 +1,4 @@
-from nba_api.stats.endpoints import leaguedashplayerstats, playercareerstats
+from nba_api.stats.endpoints import leaguedashplayerstats, playercareerstats, leaguestandingsv3
 from nba_api.stats.static import players, teams
 import pandas as pd
 import re # For parsing range
@@ -257,6 +257,60 @@ def get_team_leader(team_name: str, stat_name: str, season: str):
     result_df = pd.DataFrame(result_data)
     result_df.rename(columns={stat_column: stat_name.upper()}, inplace=True)
     return result_df
+
+def get_team_record(team_name: str, season: str):
+    normalized_season = normalize_season(season)
+    team_id = get_team_id(team_name)
+
+    if not team_id:
+        return f"❌ Team '{team_name}' not found."
+
+    # Season format for LeagueStandingsV3 is YYYY-YY, e.g., 2023-24
+    # normalize_season should already provide this format.
+
+    try:
+        standings = leaguestandingsv3.LeagueStandingsV3(season=normalized_season)
+        # The first DataFrame in the result set usually contains the standings data.
+        standings_df = standings.get_data_frames()[0] 
+    except Exception as e:
+        return f"❌ Error fetching standings data: {e}"
+
+    if standings_df.empty:
+        return f"❌ No standings data found for season {normalized_season}."
+
+    team_standings = standings_df[standings_df['TeamID'] == team_id]
+
+    if team_standings.empty:
+        return f"❌ Could not find standings for {team_name} (ID: {team_id}) in season {normalized_season}."
+
+    # Extract relevant information
+    record = team_standings.iloc[0].get('Record', 'N/A')
+    conf_rank = team_standings.iloc[0].get('ConferenceRecord', 'N/A').split('-')[0] # often 'W-L in Conf', take W
+    # Or more directly, some versions have 'PlayoffRank' or 'ConferenceRank'
+    # Let's check for a more direct conference rank column if available.
+    # Common column names: 'ConferenceRank', 'PlayoffRank', 'ClinchIndicator' (might show rank)
+    # For simplicity, we will stick to common ones or construct from Record.
+    
+    # We need TEAM, W, L, CONF_RANK, (maybe PCT)
+    wins = team_standings.iloc[0].get('WINS', record.split('-')[0] if record != 'N/A' else 'N/A')
+    losses = team_standings.iloc[0].get('LOSSES', record.split('-')[1] if record != 'N/A' and '-' in record else 'N/A')
+    win_pct = team_standings.iloc[0].get('WinPCT', 'N/A')
+    # Use 'ConferenceRank' if available, otherwise parse from 'ConferenceRecord'
+    conference_rank = team_standings.iloc[0].get('ConferenceRank', 
+                                                 team_standings.iloc[0].get('PlayoffRank', 'N/A'))
+    team_city = team_standings.iloc[0].get('TeamCity', team_name.split()[:-1] if len(team_name.split()) > 1 else team_name) # Guess city
+    actual_team_name = team_standings.iloc[0].get('TeamName', team_name.split()[-1]) # Guess name part
+    display_name = f"{team_city} {actual_team_name}"
+
+    result_data = [{
+        'TEAM': display_name,
+        'W': wins,
+        'L': losses,
+        'PCT': f"{win_pct:.3f}" if isinstance(win_pct, float) else win_pct,
+        'CONF_RANK': conference_rank
+    }]
+    
+    return pd.DataFrame(result_data)
 
 def compare_players(player_names: list, stat_names: list, season: str, per_game: bool = False):
     season = normalize_season(season)
