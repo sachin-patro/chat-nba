@@ -7,6 +7,30 @@ load_dotenv()  # Loads from .env
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
+def get_stat_explanation_with_gpt(stat_name: str) -> str:
+    prompt = f"""
+    You are an expert NBA analyst. Explain the basketball statistic "{stat_name}" in a clear and concise way. 
+    Describe what it measures, how it's generally calculated (if common knowledge or simple), and what a high or low value might indicate. 
+    Keep the explanation suitable for a knowledgeable basketball fan who may not know this specific term.
+    Do not return JSON, just the plain text explanation.
+    Example for "FG%":
+    Field Goal Percentage (FG%) measures a player's shooting efficiency from the field. It's calculated by dividing the number of field goals made by the total number of field goals attempted. A higher FG% indicates better shooting accuracy. For example, a 50% FG% means the player makes half of their shots.
+
+    Now, explain "{stat_name}":
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o", # Or your preferred model for explanations
+            temperature=0.2, # Slightly more creative for explanations
+            messages=[{"role": "user", "content": prompt}]
+        )
+        explanation = response.choices[0].message.content
+        return explanation.strip()
+    except Exception as e:
+        print(f"⚠️ Error getting explanation from GPT for {stat_name}:", e)
+        return f"Sorry, I couldn't fetch an explanation for {stat_name} at the moment."
+
+
 def parse_query_with_gpt(user_input: str) -> dict:
     prompt = f"""
 You are a natural language to NBA stats translator. Your job is to take user questions and output structured JSON instructions.
@@ -83,6 +107,13 @@ Output:
   "action": "get_team_record",
   "team_name": "Lakers",
   "season": "2024-2025"
+}}
+---
+User: What does PER mean?
+Output:
+{{
+  "action": "explain_stat",
+  "stat_name": "PER"
 }}
 ---
 Now here is the user question:
