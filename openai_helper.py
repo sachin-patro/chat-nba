@@ -124,6 +124,15 @@ Output:
   "season": "2024-2025"
 }}
 ---
+User: Show me Devin Booker's last 5 games
+Output:
+{{
+  "action": "get_player_game_log",
+  "player_name": "Devin Booker",
+  "limit": 5,
+  "season": "2024-2025" 
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:

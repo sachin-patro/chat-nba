@@ -1,4 +1,4 @@
-from nba_api.stats.endpoints import leaguedashplayerstats, playercareerstats, leaguestandingsv3
+from nba_api.stats.endpoints import leaguedashplayerstats, playercareerstats, leaguestandingsv3, playergamelog
 from nba_api.stats.static import players, teams
 import pandas as pd
 import re # For parsing range
@@ -363,6 +363,51 @@ def get_league_average_for_stat(stat_name: str, season: str, season_type: str = 
         'PLAYERS_INCLUDED_IN_AVG': len(filtered_stats_df)
     }]
     return pd.DataFrame(result_data)
+
+def get_player_game_log(player_name: str, season: str, limit: int = 5, season_type: str = "Regular Season"):
+    player_id = get_player_id(player_name)
+    if not player_id:
+        return f"❌ Player '{player_name}' not found."
+
+    normalized_season = normalize_season(season)
+
+    try:
+        gamelog = playergamelog.PlayerGameLog(
+            player_id=player_id,
+            season=normalized_season,
+            season_type_all_star=season_type
+        )
+        gamelog_df = gamelog.get_data_frames()[0]
+    except Exception as e:
+        return f"❌ Error fetching game log for {player_name}: {e}"
+
+    if gamelog_df.empty:
+        return f"❌ No game log data found for {player_name} in season {normalized_season} ({season_type})."
+
+    # Select and format relevant columns
+    # The API returns most recent games first, so head(limit) gets the last N games.
+    gamelog_df_limited = gamelog_df.head(limit)
+    
+    columns_to_display = ['GAME_DATE', 'MATCHUP', 'WL', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT']
+    # Ensure all requested columns exist, create them with N/A if not (though they usually do for PlayerGameLog)
+    for col in columns_to_display:
+        if col not in gamelog_df_limited.columns:
+            gamelog_df_limited[col] = "N/A"
+            
+    result_df = gamelog_df_limited[columns_to_display].copy()
+
+    # Format date and percentages for better readability
+    if 'GAME_DATE' in result_df.columns:
+        try:
+            result_df['GAME_DATE'] = pd.to_datetime(result_df['GAME_DATE'], errors='coerce').dt.strftime('%Y-%m-%d')
+        except Exception:
+            pass # Keep original if formatting fails
+            
+    for col in ['FG_PCT', 'FG3_PCT', 'FT_PCT']:
+        if col in result_df.columns and pd.api.types.is_numeric_dtype(result_df[col]):
+            result_df[col] = (result_df[col] * 100).round(1).astype(str) + '%'
+
+    return result_df
 
 def compare_players(player_names: list, stat_names: list, season: str, per_game: bool = False):
     season = normalize_season(season)
