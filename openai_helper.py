@@ -116,6 +116,14 @@ Output:
   "stat_name": "PER"
 }}
 ---
+User: What's the league average for 3PT% this season?
+Output:
+{{
+  "action": "get_league_average",
+  "stat_name": "3PT%",
+  "season": "2024-2025"
+}}
+---
 Now here is the user question:
 User: {user_input}
 Output:

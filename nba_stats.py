@@ -312,6 +312,58 @@ def get_team_record(team_name: str, season: str):
     
     return pd.DataFrame(result_data)
 
+def get_league_average_for_stat(stat_name: str, season: str, season_type: str = "Regular Season"):
+    normalized_season = normalize_season(season)
+    stat_column = stat_name_to_column(stat_name)
+
+    try:
+        all_player_stats_df = leaguedashplayerstats.LeagueDashPlayerStats(
+            season=normalized_season,
+            season_type_all_star=season_type,
+            per_mode_detailed="PerGame" if "per game" in stat_name.lower() or "_per_game" in stat_name.lower() else "Totals"
+        ).get_data_frames()[0]
+    except Exception as e:
+        return f"❌ Error fetching league-wide player stats: {e}"
+
+    if all_player_stats_df.empty:
+        return f"❌ No league-wide player stats found for season {normalized_season} ({season_type})."
+
+    if stat_column not in all_player_stats_df.columns:
+        return f"❌ Stat '{stat_name}' (mapped to '{stat_column}') not found in league data."
+
+    # Apply minimum attempt filters for percentage stats to get a meaningful average
+    # These thresholds might need adjustment for a good league average calculation
+    filtered_stats_df = all_player_stats_df.copy()
+    if stat_column == "FG3_PCT":
+        # For league average, consider a lower attempt threshold than for "top players"
+        # e.g., players who have attempted at least 1 three-pointer per team game played by their team on average
+        # Or a simpler fixed number like 50-82 attempts for the whole season.
+        filtered_stats_df = filtered_stats_df[filtered_stats_df["FG3A"] >= 50] 
+    elif stat_column == "FT_PCT":
+        filtered_stats_df = filtered_stats_df[filtered_stats_df["FTA"] >= 50]
+    elif stat_column == "FG_PCT":
+        filtered_stats_df = filtered_stats_df[filtered_stats_df["FGA"] >= 100]
+    
+    if filtered_stats_df.empty:
+        return f"❌ No players met the minimum criteria for calculating average for '{stat_name}' in {normalized_season} ({season_type})."
+
+    # Calculate the mean of the specified stat column
+    # Ensure the column is numeric before calculating mean
+    if pd.api.types.is_numeric_dtype(filtered_stats_df[stat_column]):
+        league_average = filtered_stats_df[stat_column].mean()
+    else:
+        return f"❌ Stat column '{stat_column}' is not numeric, cannot calculate average."
+
+    # Format for display
+    result_data = [{
+        'STATISTIC': stat_name.upper(),
+        'LEAGUE_AVERAGE': f"{league_average:.3f}" if isinstance(league_average, float) else league_average,
+        'SEASON': normalized_season,
+        'SEASON_TYPE': season_type,
+        'PLAYERS_INCLUDED_IN_AVG': len(filtered_stats_df)
+    }]
+    return pd.DataFrame(result_data)
+
 def compare_players(player_names: list, stat_names: list, season: str, per_game: bool = False):
     season = normalize_season(season)
     stat_columns = [stat_name_to_column(stat) for stat in stat_names]

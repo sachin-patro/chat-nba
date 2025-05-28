@@ -1,6 +1,6 @@
 from utils import print_banner
 from openai_helper import parse_query_with_gpt, get_stat_explanation_with_gpt
-from nba_stats import get_top_players_by_stat, compare_players, get_player_stats_over_seasons, get_team_leader, get_team_record
+from nba_stats import get_top_players_by_stat, compare_players, get_player_stats_over_seasons, get_team_leader, get_team_record, get_league_average_for_stat
 import pandas as pd
 from tabulate import tabulate
 
@@ -92,6 +92,18 @@ def main():
                 print(explanation)
             else:
                 print("❌ Could not determine which stat to explain.")
+            print()
+
+        elif result.get("action") == "get_league_average":
+            table = get_league_average_for_stat(
+                stat_name=result.get("stat_name", ""),
+                season=result.get("season", ""),
+                season_type=result.get("season_type", "Regular Season")
+            )
+            if isinstance(table, pd.DataFrame):
+                print(tabulate(table, headers='keys', tablefmt='grid', showindex=False))
+            else:
+                print(table)
             print()
 
         elif result.get("action") == "compare_players":
