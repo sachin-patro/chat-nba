@@ -1,5 +1,5 @@
 from utils import print_banner
-from openai_helper import parse_query_with_gpt, get_stat_explanation_with_gpt
+from openai_helper import parse_query_with_gpt, get_stat_explanation_with_gpt, answer_historical_nba_fact_with_gpt
 from nba_stats import get_top_players_by_stat, compare_players, get_player_stats_over_seasons, get_team_leader, get_team_record, get_league_average_for_stat, get_player_game_log
 import pandas as pd
 from tabulate import tabulate
@@ -117,6 +117,11 @@ def main():
                 print(tabulate(table, headers='keys', tablefmt='grid', showindex=False))
             else:
                 print(table)
+            print()
+
+        elif result.get("action") == "get_historical_nba_fact":
+            answer = answer_historical_nba_fact_with_gpt(result)
+            print(answer)
             print()
 
         elif result.get("action") == "compare_players":

@@ -31,6 +31,35 @@ def get_stat_explanation_with_gpt(stat_name: str) -> str:
         return f"Sorry, I couldn't fetch an explanation for {stat_name} at the moment."
 
 
+def answer_historical_nba_fact_with_gpt(user_query_details: dict) -> str:
+    """
+    Answers a historical NBA factual question using GPT.
+    """
+    original_question = user_query_details.get("original_question", "that specific NBA historical fact")
+
+    prompt = f"""\
+You are an NBA historian. Provide a concise answer to the following NBA historical question:
+"{original_question}"
+
+If the question is about a specific number (e.g., "how many times..."), provide the number and a brief context if relevant.
+For example, if the question is "how many teams have come back from 3-1 down in the playoffs?", a good answer would be:
+"As of my last update, 13 teams have come back from a 3-1 deficit to win an NBA playoff series. The most recent was the Denver Nuggets in 2020, who did it twice in the same postseason."
+
+Do not return JSON, just the plain text answer.
+"""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o", 
+            temperature=0.1, 
+            messages=[{"role": "user", "content": prompt}]
+        )
+        answer = response.choices[0].message.content
+        return answer.strip()
+    except Exception as e:
+        print(f"⚠️ Error getting historical NBA fact from GPT for query '{original_question}':", e)
+        return f"Sorry, I couldn't answer the historical question '{original_question}' at the moment."
+
+
 def parse_query_with_gpt(user_input: str) -> dict:
     prompt = f"""
 You are a natural language to NBA stats translator. Your job is to take user questions and output structured JSON instructions.
@@ -129,8 +158,15 @@ Output:
 {{
   "action": "get_player_game_log",
   "player_name": "Devin Booker",
-  "limit": 5,
-  "season": "2024-2025" 
+  "season": "2024-2025",
+  "limit": 5
+}}
+---
+User: how many teams have come back from 3-1 down in the playoffs?
+Output:
+{{
+  "action": "get_historical_nba_fact",
+  "original_question": "how many teams have come back from 3-1 down in the playoffs?"
 }}
 ---
 Now here is the user question:
